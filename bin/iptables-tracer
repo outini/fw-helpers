@@ -1,0 +1,78 @@
+#! /usr/bin/env python3
+#
+#    Python firewall helpers (fw-helpers)
+#
+#    Copyright (C) 2017 Denis Pompilio (jawa) <denis.pompilio@gmail.com>
+#
+#    This file is part of fw-helpers
+#
+#    This program is free software; you can redistribute it and/or
+#    modify it under the terms of the GNU General Public License
+#    as published by the Free Software Foundation; either version 2
+#    of the License, or (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, see <http://www.gnu.org/licenses/>.
+
+"""
+Usage:
+    iptables-tracer <fw_file> -p <proto> -s <src> -d <dst> [--state <state>]
+
+Options:
+    <fw_file>           Firewall file produced by "iptables-save"
+    -p <proto>          Connection protocol
+    -s <src>            Connection source  <src_ip>[:<src_port>]
+    -d <dst>            Connection destination  <dst_ip>[:<dst_port>]
+    --state <state>     [Optional] Connexion state [default: NEW]
+
+Example:
+    iptables-tracer fw.dump -p tcp -s 1.2.3.4 -d 2.3.4.5:22 -p tcp --state NEW
+"""
+
+import docopt
+from ipaddress import ip_interface as cidr
+from fw_helpers import iptables
+
+
+if __name__ == "__main__":
+
+    args = docopt.docopt(__doc__)
+
+    firewall_live_file = args['<fw_file>']
+    firewall = iptables.IptablesFirewall(firewall_live_file)
+
+    try:
+        src_ip, src_port = args['-s'].split(':')
+    except ValueError:
+        src_ip = args['-s']
+        src_port = "any"
+
+    try:
+        dst_ip, dst_port = args['-d'].split(':')
+    except ValueError:
+        dst_ip = args['-d']
+        dst_port = "any"
+
+    cnx = {'src': cidr(src_ip),
+           'spt': src_port,
+           'dst': cidr(dst_ip),
+           'dpt': dst_port,
+           'proto': args['-p'],
+           'state': args.get('--state', "NEW")
+           }
+
+    print('Tracing:  {}:{} =| {} |=> {}:{}  (state: {})\n'.format(
+        cnx['src'], cnx['spt'],
+        cnx['proto'],
+        cnx['dst'], cnx['dpt'],
+        cnx['state']))
+
+    trace = firewall.trace_cnx(cnx)
+
+    for rule in trace:
+        print(rule)

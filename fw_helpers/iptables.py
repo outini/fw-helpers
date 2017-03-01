@@ -109,7 +109,7 @@ class Rule(dict):
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
-            raise NotImplemented
+            return NotImplemented
         return (self['sip'] == other['sip'] and
                 self['spt'] == other['spt'] and
                 self['proto'] == other['proto'] and

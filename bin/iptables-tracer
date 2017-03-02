@@ -31,7 +31,7 @@ Options:
     --state <state>     [Optional] Connexion state [default: NEW]
 
 Example:
-    iptables-tracer fw.dump -p tcp -s 1.2.3.4 -d 2.3.4.5:22 -p tcp --state NEW
+    iptables-tracer fw.dump -p tcp -s 1.2.3.4 -d 2.3.4.5:22 --state NEW
 """
 
 import docopt
@@ -43,24 +43,29 @@ if __name__ == "__main__":
 
     args = docopt.docopt(__doc__)
 
+    # Trying to load the provided iptables-save dump
     firewall_live_file = args['<fw_file>']
     firewall = iptables.IptablesFirewall(firewall_live_file)
 
     try:
+        # If no port is provided, then port value defaults to 'any'
         src_ip, src_port = args['-s'].split(':')
     except ValueError:
         src_ip = args['-s']
         src_port = "any"
 
     try:
+        # If no port is provided, then port value defaults to 'any'
         dst_ip, dst_port = args['-d'].split(':')
     except ValueError:
         dst_ip = args['-d']
         dst_port = "any"
 
-    cnx = {'src': cidr(src_ip),
+    # Defining base structure of a connection
+    # Source and destination addresses are converted to objects
+    cnx = {'src': ip_interface(src_ip),
            'spt': src_port,
-           'dst': cidr(dst_ip),
+           'dst': ip_interface(dst_ip),
            'dpt': dst_port,
            'proto': args['-p'],
            'state': args.get('--state', "NEW")
@@ -72,6 +77,7 @@ if __name__ == "__main__":
         cnx['dst'], cnx['dpt'],
         cnx['state']))
 
+    # Running simulation of connection processing
     trace = firewall.trace_cnx(cnx)
 
     for rule in trace:

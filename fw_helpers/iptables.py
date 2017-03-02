@@ -18,6 +18,9 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program; if not, see <http://www.gnu.org/licenses/>.
 
+"""Iptables parsing and simulation support for Python
+"""
+
 import logging
 # module ipaddress is python3 base
 from ipaddress import ip_interface as cidr
@@ -33,7 +36,11 @@ _logger = logging.getLogger(__name__)
 
 
 class Rule(dict):
-    """Firewall rule
+    """Firewall rule object
+
+    :param int fline: Rule number in firewall dump
+    :param str table: Netfilter table name (raw, nat, filter, etc.)
+    :param str rule_line: Iptables line to parse
     """
 
     def __init__(self, fline, table, rule_line):
@@ -43,6 +50,7 @@ class Rule(dict):
         fields = self._str.split()
         self._args = dict(zip(fields[0::2], fields[1::2]))
 
+        # Todo: improve iptables format parsing
         # WARN: Be careful with no arg or multiple args options.
         #   -4, -6, !
         #   -f, --fragment
@@ -52,6 +60,7 @@ class Rule(dict):
         self._fline = fline  # [internal] line in parsed file
         self._table = table  # [internal] iptables table
 
+        # Register parsed options
         self.i_opt("chain", '-A')
         self.i_opt("in_nic", '--in-interface', '-i', d='any')
         self.i_opt("out_nic", '--out-interface', '-o', d='any')
@@ -108,6 +117,8 @@ class Rule(dict):
                 action, action_info)
 
     def __eq__(self, other):
+        """Rule equality check
+        """
         if not isinstance(other, self.__class__):
             return NotImplemented
         return (self['sip'] == other['sip'] and
@@ -119,6 +130,11 @@ class Rule(dict):
 
     def i_opt(self, key, *opts, d=None):
         """Load iptables option, with default value fallback
+
+        :param str key: Dictionary key to use to store the value
+        :param str opts: Iptables line fields to match on
+        :param obj d: Default value to use if field is not found
+        :return: :obj:`None`
         """
         for opt in opts:
             if opt in self._args:
@@ -127,7 +143,11 @@ class Rule(dict):
         self[key] = d
 
     def match(self, cnx_data):
-        """Match cnx_data against rule data
+        """Match connection data against rule data
+
+        :param dict cnx_data: Connection data
+        :return: :class:`tuple` of match result and connection data
+                 (:class:`bool`, :class:`dict`)
         """
         if self['state'] and cnx_data['state'] not in self['state'].split(','):
             return False, cnx_data
@@ -209,7 +229,13 @@ class IptablesFirewall(object):
 
     @property
     def flatrules(self):
-        """Flatten iptables multichain rules
+        """Flatten iptables multi-chain rules
+
+        This method tries to aggregate multiple chain matching into a single
+        iptables rule. It return a simplify and (much) lighter version of the
+        provided firewall dump.
+
+        :return: Flattened rules set (:class:`list` of :class:`.Rule`)
         """
         def rundown(fw_table, chain):
             flatrules = []
@@ -255,6 +281,9 @@ class IptablesFirewall(object):
     # TODO: implement start at table functionality with default table="raw"
     def trace_cnx(self, cnx_data):
         """Trace a connection through the live firewall
+
+        :param dict cnx_data: Connection data
+        :return: Matched rules (:class:`list` of :class:`.Rule`)
         """
         # if table not in self.tables:
         #     raise ValueError('Unknown table: %s' % (table,))
@@ -281,10 +310,15 @@ class IptablesFirewall(object):
 
         return matched_rules
 
-    def run_chain(self, tablename, chain, cnx_data):
+    def run_chain(self, table_name, chain, cnx_data):
         """Run a connection against chain's rules
+
+        :param str table_name: Netfilter table name (raw, nat, filter, etc.)
+        :param chain: Table's chain (INPUT, FORWARD, OUTPUT, etc.)
+        :param cnx_data: Connection data
+        :return: Matched rules (:class:`list` of :class:`.Rule`)
         """
-        table = self.tables.get(tablename)
+        table = self.tables.get(table_name)
 
         if not table:
             return []
@@ -302,7 +336,7 @@ class IptablesFirewall(object):
                 continue
 
             matches.append(rule)
-            submatches = self.run_chain(tablename, rule['jump'], cnx_data)
+            submatches = self.run_chain(table_name, rule['jump'], cnx_data)
             if submatches:
                 matches.extend(submatches)
 

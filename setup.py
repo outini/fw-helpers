@@ -23,7 +23,7 @@ from distutils.core import setup
 
 if __name__ == '__main__':
     readme_file = os.path.join(os.path.dirname(__file__), 'README.rst')
-    release = "1.0.0"
+    release = "1.0.1"
     setup(
         name="fw-helpers",
         version=".".join(release.split('.')),
@@ -39,7 +39,9 @@ if __name__ == '__main__':
         scripts=['bin/iptables-tracer'],
         packages=['fw_helpers'],
         package_dir={'fw_helpers': 'fw_helpers'},
-        data_files=[('share/doc/fw_helpers', ['README.rst', 'LICENSE'])],
+        data_files=[('share/doc/fw_helpers', ['README.rst', 'LICENSE']),
+                    ('share/man/man1/', ['man/iptables-tracer.1'])],
+        install_requires=['docopt'],
         keywords=['firewall', 'shell', 'helpers', 'iptables'],
         classifiers=[
             'Development Status :: 5 - Production/Stable',

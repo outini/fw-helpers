@@ -23,7 +23,7 @@ from distutils.core import setup
 
 if __name__ == '__main__':
     readme_file = os.path.join(os.path.dirname(__file__), 'README.rst')
-    release = "1.0.1"
+    release = "1.0.2"
     setup(
         name="fw-helpers",
         version=".".join(release.split('.')),

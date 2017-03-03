@@ -22,6 +22,8 @@
 """
 Usage:
     iptables-tracer <fw_file> -p <proto> -s <src> -d <dst> [--state <state>]
+    iptables-tracer --version
+    iptables-tracer (-h|--help)
 
 Options:
     <fw_file>           Firewall file produced by "iptables-save"
@@ -29,19 +31,26 @@ Options:
     -s <src>            Connection source  <src_ip>[:<src_port>]
     -d <dst>            Connection destination  <dst_ip>[:<dst_port>]
     --state <state>     [Optional] Connexion state [default: NEW]
+    --version           Show version
+    -h, --help          Show this help
 
 Example:
     iptables-tracer fw.dump -p tcp -s 1.2.3.4 -d 2.3.4.5:22 --state NEW
 """
 
 import docopt
-from ipaddress import ip_interface as cidr
+from ipaddress import ip_interface
+from fw_helpers import VERSION
 from fw_helpers import iptables
 
 
 if __name__ == "__main__":
 
     args = docopt.docopt(__doc__)
+
+    if args.get('--version'):
+        print("iptables-tracer (fw-helpers) %s" % VERSION)
+        exit(0)
 
     # Trying to load the provided iptables-save dump
     firewall_live_file = args['<fw_file>']
